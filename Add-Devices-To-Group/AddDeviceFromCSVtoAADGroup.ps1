@@ -1,5 +1,4 @@
 # Replace these with your actual values
-
 $companyName = "Company.com"
 $csvFilePath = "C:\Users\$env:Username\OneDrive - $companyName\Desktop\CSVLIST.csv"
 $groupName = "Group.AddDevices.to.me"
