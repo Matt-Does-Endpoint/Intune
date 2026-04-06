@@ -1,0 +1,264 @@
+#INFO
+#This script must execute in the user context, and cannot execute as system.
+
+# ***************************************************************************
+# 								Variables to fill
+# ***************************************************************************
+# Choose header picture
+# By default the picture is the GIF, which must be 2 to 1 aspect ratio for proper formatting of pixels. you can use a .jpg if you're boring.
+$Header_type = "GIF"
+$URL = "C:\ProgramData\Scripts\Win11Updates.gif"
+
+#Create Repository directory for things in an accessible place.
+$Target = "C:\Temp"
+# If local path doesn't exist, create it
+If (!(Test-Path $Target)) { New-Item -Path $Target -ItemType Directory -Force }
+
+
+# For this, set the $Show_Button variable to $True or $False to enable each button. You can disable both buttons and just show a "dismiss" by setting both to $false
+$Show_Button1 = $False  # It will add a button to show the intended steps
+$Show_Button2 = $False # It will add a button to show the intended steps
+
+#sets the different tasks names related to each button within the registry so windows notifications can call it. These must be different, as the name must be unique for each button/action.
+#Location for these would be HKEY_CURRENT_USER\Software\Classes\$actionButton1 or HKEY_CURRENT_USER\Software\Classes\$actionButton2
+$actionButton1 = 'ViewUpdates'
+$actionButton2 = 'win11Update'
+
+#Set what each action buttons text says.
+$buttonName1 = 'View Updates'
+$buttonName2 = 'Windows 11 Instructions'
+
+#Names of the button scripts
+$ButtonScript1 = 'ViewUpdates.cmd'
+$ButtonScript2 = 'win11Update.cmd'
+#Write your .bat scripts that correspond to the buttons you want. I tried powershell, but it can't execute from the registy. However, you can call "powershell.exe" from your .bat file :)
+#added additional cleanup for the existing bat scripts, and the leftover registry keys. This will keep the registry clean for further notifications
+$Action_Script1 = @"
+powershell.exe -ExecutionPolicy Bypass -NoProfile -WindowStyle Hidden -Command start ms-settings:windowsupdate
+powershell.exe -ExecutionPolicy Bypass -NoProfile -Command "& {Remove-Item -Path 'HKCU:\Software\Classes\$actionButton1' -Recurse -Force}"
+powershell.exe -ExecutionPolicy Bypass -NoProfile -Command "& {Remove-Item -Path 'HKCU:\Software\Classes\$actionButton2' -Recurse -Force}"
+powershell.exe -ExecutionPolicy Bypass -NoProfile -Command "& {Get-ChildItem -Path 'C:\temp' -Filter '*.cmd' -Recurse | Remove-Item -Force}"
+"@
+
+
+$Action_Script2 = @"
+powershell.exe -ExecutionPolicy Bypass -NoProfile -WindowStyle Hidden -Command Start-Process 'https://Docwebpage.html'
+powershell.exe -ExecutionPolicy Bypass -NoProfile -Command "& {Remove-Item -Path 'HKCU:\Software\Classes\$actionButton2' -Recurse -Force}"
+powershell.exe -ExecutionPolicy Bypass -NoProfile -Command "& {Remove-Item -Path 'HKCU:\Software\Classes\$actionButton1' -Recurse -Force}"
+powershell.exe -ExecutionPolicy Bypass -NoProfile -Command "& {Get-ChildItem -Path 'C:\temp' -Filter '*.cmd' -Recurse | Remove-Item -Force}"
+"@
+
+
+
+# Set toast text
+# Use the $Title variable to change the title of the toast, and the message text for the first block of text.
+$Title = "Windows 11 has arrived!"
+$messagetext = 'REMINDER - Your Windows 10 CloudPC (this device) will be deleted, and a new Windows 11 CloudPC will be available after 7am on 3/24.
+
+Please see email for further details'
+# This just creates proper line-breaks in the formatting.
+$Message = "`n$messagetext 
+"
+# Use the $Advice variable to change the advice message/the second part of the message
+$Advice = "`n`Save important files to onedrive to avoid data loss."
+# Use the $Text_AppName variable to set your company/team name
+$Text_AppName = "Endpoint Team"
+
+
+# ***************************************************************************
+# 								Variables to fill
+# ***************************************************************************
+
+
+
+
+# ***************************************************************************
+# 					Reference GIF for notification header
+# ***************************************************************************
+If($Header_type -eq "GIF")
+	{
+		$HeroImage = "C:\ProgramData\Scripts\Win11Updates.gif"	
+		#invoke-webrequest -Uri $URL -OutFile $HeroImage -usebasicparsing
+	}Else
+	{
+		#$HeroImage = "C:\ProgramData\Scripts\HeaderPicture.png"
+		
+	}
+	
+#function that creates the action the buttons can act upon. (in this case, run a batch script)
+Function Set_Action
+	{
+		param(
+		$Action_Name		
+		)	
+		
+		$Main_Reg_Path = "HKCU:\SOFTWARE\Classes\$Action_Name"
+		$Command_Path = "$Main_Reg_Path\shell\open\command"
+		$CMD_Script = "C:\Temp\$Action_Name.cmd"
+		New-Item $Command_Path -Force
+		New-ItemProperty -Path $Main_Reg_Path -Name "URL Protocol" -Value "" -PropertyType String -Force | Out-Null
+		Set-ItemProperty -Path $Main_Reg_Path -Name "(Default)" -Value "URL:$Action_Name Protocol" -Force | Out-Null
+		Set-ItemProperty -Path $Command_Path -Name "(Default)" -Value $CMD_Script -Force | Out-Null		
+	}
+
+
+#directories for the scripts that run from the buttons.
+$Script_Export_Path = "C:\Temp"
+If($Show_Button1 -eq $True)
+	{
+        remove-item "$Script_Export_Path\$ButtonScript1" -Force -ErrorAction SilentlyContinue
+		$Action_Script1 | out-file "$Script_Export_Path\$ButtonScript1" -Force -Encoding ASCII
+		Set_Action -Action_Name $actionButton1
+	}
+
+$Script_Export_Path = "C:\Temp"
+If($Show_Button2 -eq $True)
+	{
+        remove-item "$Script_Export_Path\$ButtonScript2" -Force -ErrorAction SilentlyContinue
+		$Action_Script2 | out-file "$Script_Export_Path\$ButtonScript2" -Force -Encoding ASCII
+		Set_Action -Action_Name $actionButton2
+	}
+
+
+
+
+Function Register-NotificationApp($AppID,$AppDisplayName) {
+    [int]$ShowInSettings = 0
+
+    [int]$IconBackgroundColor = 0
+	$IconUri = "C:\Windows\ImmersiveControlPanel\images\logo.png"
+	
+    $AppRegPath = "HKCU:\Software\Classes\AppUserModelId"
+    $RegPath = "$AppRegPath\$AppID"
+	
+	$Notifications_Reg = 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Notifications\Settings'
+	If(!(Test-Path -Path "$Notifications_Reg\$AppID")) 
+		{
+			New-Item -Path "$Notifications_Reg\$AppID" -Force
+			New-ItemProperty -Path "$Notifications_Reg\$AppID" -Name 'ShowInActionCenter' -Value 1 -PropertyType 'DWORD' -Force
+		}
+
+	If((Get-ItemProperty -Path "$Notifications_Reg\$AppID" -Name 'ShowInActionCenter' -ErrorAction SilentlyContinue).ShowInActionCenter -ne '1') 
+		{
+			New-ItemProperty -Path "$Notifications_Reg\$AppID" -Name 'ShowInActionCenter' -Value 1 -PropertyType 'DWORD' -Force
+		}	
+		
+    try {
+        if (-NOT(Test-Path $RegPath)) {
+            New-Item -Path $AppRegPath -Name $AppID -Force | Out-Null
+        }
+        $DisplayName = Get-ItemProperty -Path $RegPath -Name DisplayName -ErrorAction SilentlyContinue | Select -ExpandProperty DisplayName -ErrorAction SilentlyContinue
+        if ($DisplayName -ne $AppDisplayName) {
+            New-ItemProperty -Path $RegPath -Name DisplayName -Value $AppDisplayName -PropertyType String -Force | Out-Null
+        }
+        $ShowInSettingsValue = Get-ItemProperty -Path $RegPath -Name ShowInSettings -ErrorAction SilentlyContinue | Select -ExpandProperty ShowInSettings -ErrorAction SilentlyContinue
+        if ($ShowInSettingsValue -ne $ShowInSettings) {
+            New-ItemProperty -Path $RegPath -Name ShowInSettings -Value $ShowInSettings -PropertyType DWORD -Force | Out-Null
+        }
+		
+		New-ItemProperty -Path $RegPath -Name IconUri -Value $IconUri -PropertyType ExpandString -Force | Out-Null	
+		New-ItemProperty -Path $RegPath -Name IconBackgroundColor -Value $IconBackgroundColor -PropertyType ExpandString -Force | Out-Null		
+		
+    }
+    catch {}
+}
+
+
+#**************************************************************************************************************************
+# 													TOAST NOTIF PART
+#**************************************************************************************************************************
+#sets the notification type to a "reminder" for windows
+$Scenario = 'reminder' 
+
+#Sets proper formatting for windows notifications
+$Action_1 = "$actionbutton1" + ":"
+$Action_2 = "$actionButton2" + ":"
+#logic for each possibility of 2 buttons + dismiss, 1 buttons + dismiss, and no buttons, only a dismiss.
+If(($Show_Button1 -eq $True -and $Show_Button2 -eq $True))
+	{
+		$Actions = 
+@"
+  <actions>
+        <action activationType="protocol" arguments="$Action_1" content="$ButtonName1" />		
+        <action activationType="protocol" arguments="$Action_2" content="$ButtonName2" />		
+        <action activationType="protocol" arguments="Dismiss" content="Dismiss" />
+   </actions>	
+"@		
+}ElseIf(($Show_Button1 -eq $True -and $Show_Button2 -eq $False))
+{
+		$Actions = 
+@"
+  <actions>
+        <action activationType="protocol" arguments="$Action_1" content="$ButtonName1" />			
+        <action activationType="protocol" arguments="Dismiss" content="Dismiss" />
+   </actions>	
+"@		
+}ElseIf(($Show_Button1 -eq $False -and $Show_Button2 -eq $True))
+{
+		$Actions = 
+@"
+  <actions>
+        <action activationType="protocol" arguments="$Action_2" content="$ButtonName2" />			
+        <action activationType="protocol" arguments="Dismiss" content="Dismiss" />
+   </actions>	
+"@		
+}ElseIf (($Show_Button1 -eq $False -and $Show_Button2 -eq $False))
+{
+		$Actions = 
+@"
+  <actions>
+        <action activationType="protocol" arguments="Dismiss" content="Dismiss" />
+   </actions>	
+"@		
+	}
+
+#creates the toast notification from the variables above.
+[xml]$Toast = @"
+<toast scenario="$Scenario">
+    <visual>
+    <binding template="ToastGeneric">
+        <image placement="hero" src="$HeroImage"/>
+        <text placement="attribution">$Attribution</text>
+        <text>$Title</text>
+        <group>
+            <subgroup>     
+                <text hint-style="body" hint-wrap="true" >$Message</text>
+            </subgroup>
+        </group>
+		
+		<group>				
+			<subgroup>     
+				<text hint-style="body" hint-wrap="true" >$Advice</text>								
+			</subgroup>				
+		</group>				
+    </binding>
+    </visual>
+	$Actions
+</toast>
+"@	
+
+
+$AppID = $Text_AppName
+$AppDisplayName = $Text_AppName
+Register-NotificationApp -AppID $Text_AppName -AppDisplayName $Text_AppName
+#function to display the notification.
+function Display-ToastNotification() {
+
+# Toast creation and display
+$Load = [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime]
+$Load = [Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime]
+$ToastXml = New-Object -TypeName Windows.Data.Xml.Dom.XmlDocument
+$ToastXml.LoadXml($Toast.OuterXml)	
+        
+    # Display the toast notification
+    try {
+        [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($AppID).Show($ToastXml)
+    }
+    catch { 
+        Write-Output -Message 'Something went wrong when displaying the toast notification' -Level Warn
+        Write-Output -Message 'Make sure the script is running as the logged on user' -Level Warn     
+    }
+}
+
+
+Display-ToastNotification
