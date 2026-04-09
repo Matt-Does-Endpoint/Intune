@@ -1,7 +1,8 @@
-$Scripts = Test-Path C:\ProgramData\Scripts
+$ScriptDirectory = "C:\ProgramData\Scripts"
+$Scripts = Test-Path $ScriptDirectory
 If($Scripts -eq $False){New-Item -Path C:\ProgramData\Scripts -ItemType Directory}
 
-Copy-Item .\Application.ico -Destination $Scripts
+Copy-Item .\Application.ico -Destination $ScriptDirectory
 
 
 #create URL that's modifiable
