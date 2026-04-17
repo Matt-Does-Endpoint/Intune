@@ -1,0 +1,2 @@
+AppDeployToolkitLogo.ico needs to be 48x48
+AppDeployToolkitBanner.png needs to be 450x50
