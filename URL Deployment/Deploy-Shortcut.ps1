@@ -1,10 +1,8 @@
-#create .LNK for exe.
-$Shell = New-Object -ComObject ("WScript.Shell")
-$ShortCut = $Shell.CreateShortcut("C:\Users\Public\Desktop\Application.url")
-$ShortCut.TargetPath="https://URL.com"
-$ShortCut.Target="https://URL.com"
-$ShortCut.IconLocation = "C:\ProgramData\Scripts\Application.ico, 0";
-$ShortCut.Save()
-
-Add-Content $path "$iconfile"
-Add-Content $path "IconIndex=0"
+#Custom Shortcut
+$WshShell = New-Object -comObject WScript.Shell
+$Shortcut = $WshShell.CreateShortcut("C:\Users\Public\Desktop\Self Service.lnk")
+$Shortcut.WorkingDirectory = "C:\ProgramData\Scripts"
+$Shortcut.TargetPath = "C:\ProgramData\Scripts\Self Service.exe"
+#$Shortcut.WindowStyle = 7
+$shortcut.IconLocation="$Env:ProgramData\Scripts\company.ico"
+$Shortcut.Save()
