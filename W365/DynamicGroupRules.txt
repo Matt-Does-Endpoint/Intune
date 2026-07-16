@@ -1,0 +1,21 @@
+2c-8gb-128gb
+user.assignedPlans -any (assignedPlan.servicePlanId -eq "3efff3fe-528a-4fc5-b1ba-845802cc764f" -and assignedPlan.capabilityStatus -eq "Enabled")
+
+2C-8gb-256gb
+user.assignedPlans -any (assignedPlan.servicePlanId -eq "d3468c8c-3545-4f44-a32f-b465934d2498" -and assignedPlan.capabilityStatus -eq "Enabled")
+
+4C-16gb-128gb
+user.assignedPlans -any (assignedPlan.servicePlanId -eq "2de9c682-ca3f-4f2b-b360-dfc4775db133" -and assignedPlan.capabilityStatus -eq "Enabled")
+
+4C-16gb-256gb
+user.assignedPlans -any (assignedPlan.servicePlanId -eq "9ecf691d-8b82-46cb-b254-cd061b2c02fb" -and assignedPlan.capabilityStatus -eq "Enabled")
+
+4C-16gb-512gb
+user.assignedPlans -any (assignedPlan.servicePlanId -eq "3bba9856-7cf2-4396-904a-00de74fba3a4" -and assignedPlan.capabilityStatus -eq "Enabled")
+
+
+Frontline
+(device.deviceModel -startsWith "Cloud PC Frontline")
+
+All Cloud PC's
+(device.deviceModel -contains "CloudPC") or (device.deviceModel -contains "Cloud PC")
